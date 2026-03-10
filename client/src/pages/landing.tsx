@@ -117,7 +117,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background circuit-overlay">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 border-b glass">
         <div className="container flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-serif text-xl font-bold tracking-wide">
             <HeaderLogo size="md" />
@@ -143,15 +143,15 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="container px-4 py-20 md:py-28 lg:py-36">
+      <section className="container px-4 py-16 md:py-24 lg:py-28">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+          <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Roblox Script Key System
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl">
+          <p className="mt-4 md:mt-6 text-base md:text-lg text-muted-foreground">
             Secure license keys with HWID binding. Generate, validate, and manage keys for your script—all in one place.
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-8 md:mt-10 flex flex-wrap items-center justify-center gap-3 md:gap-4">
             <Button size="lg" variant="outline" className="gap-2 text-base" asChild>
               <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-5 w-5" />
@@ -175,10 +175,10 @@ export default function Landing() {
 
       {/* Pilih Paket */}
       {packageCards.length > 0 && (
-        <section className="border-t bg-muted/30 py-16">
+        <section className="border-t bg-muted/30 py-12 md:py-16">
           <div className="container px-4">
             <h2 className="font-serif text-3xl font-bold tracking-wide text-center mb-2">Pilih Paket</h2>
-            <p className="text-center text-muted-foreground mb-10">Pilih durasi dan beli key via Discord.</p>
+            <p className="text-center text-muted-foreground mb-8 md:mb-10">Pilih durasi dan beli key via Discord.</p>
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
               {packageCards.map((pkg) => {
                 const features = [pkg.feature1, pkg.feature2, pkg.feature3, pkg.feature4].filter(Boolean);
@@ -239,7 +239,7 @@ export default function Landing() {
 
       {/* Showcase */}
       {showcaseItems.length > 0 && (
-        <section className="border-t bg-muted/30 py-16">
+        <section className="border-t bg-muted/30 py-12 md:py-16">
           <div className="container px-4">
             <h2 className="font-serif text-3xl font-bold tracking-wide text-center mb-8">
               Scripts
@@ -289,7 +289,7 @@ export default function Landing() {
                 </>
               )}
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((item) => {
                 const vidId = getYoutubeId(item.youtubeUrl);
                 const Icon1 = ICON_MAP[item.feature1Icon ?? "Zap"] ?? Zap;
@@ -493,7 +493,7 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="border-t bg-primary/5 py-16">
+      <section className="border-t bg-primary/5 py-12 md:py-16">
         <div className="container px-4 text-center">
           <h2 className="font-serif text-2xl font-bold tracking-wide">
             Already have a key?
@@ -502,7 +502,7 @@ export default function Landing() {
             Validate it here or check your key status.
           </p>
           <Link href="/validate">
-            <Button size="lg" className="mt-6">
+            <Button size="lg" className="mt-5 md:mt-6">
               Validate Key
             </Button>
           </Link>
