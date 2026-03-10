@@ -70,10 +70,11 @@ function AdminArea() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full circuit-overlay">
         <AppSidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-4">
+            <div className="absolute inset-0 glass pointer-events-none" />
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <ThemeToggle />
           </header>

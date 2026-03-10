@@ -56,8 +56,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-background circuit-overlay p-4">
+      <Card className="w-full max-w-md glass">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg overflow-hidden">
             <HeaderLogo size="xl" />
