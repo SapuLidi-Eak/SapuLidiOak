@@ -237,15 +237,23 @@ export default function Landing() {
                             </div>
                           ) : null}
                           <div className={pkg.isPopular ? "pt-10" : ""}>
-                            {pkg.imageUrl ? (
-                              <div className="aspect-video w-full overflow-hidden bg-muted">
-                                <img src={pkg.imageUrl} alt="" className="h-full w-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="aspect-video w-full bg-muted flex items-center justify-center">
-                                <span className="text-muted-foreground text-sm">No image</span>
-                              </div>
-                            )}
+                            <div className="relative">
+                              {pkg.imageUrl ? (
+                                <div className="aspect-video w-full overflow-hidden bg-muted">
+                                  <img src={pkg.imageUrl} alt="" className="h-full w-full object-cover" />
+                                </div>
+                              ) : (
+                                <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                                  <span className="text-muted-foreground text-sm">No image</span>
+                                </div>
+                              )}
+                              <CarouselPrevious
+                                className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
+                              />
+                              <CarouselNext
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
+                              />
+                            </div>
                             <div className="p-5 flex flex-1 flex-col">
                               <h3 className="font-semibold text-lg">{pkg.title}</h3>
                               <ul className="mt-3 space-y-1.5 text-sm">
@@ -269,8 +277,6 @@ export default function Landing() {
                     );
                   })}
                 </CarouselContent>
-                <CarouselPrevious className="!left-0 top-1/2 -translate-y-1/2 z-20 bg-background/70 backdrop-blur border" />
-                <CarouselNext className="!right-0 top-1/2 -translate-y-1/2 z-20 bg-background/70 backdrop-blur border" />
               </Carousel>
             </div>
             {/* Desktop grid */}
@@ -407,28 +413,36 @@ export default function Landing() {
                               {item.type === "free" ? "FREE" : "PREMIUM"}
                             </span>
                           </div>
-                          {vidId ? (
-                            <button
-                              type="button"
-                              className="relative aspect-video w-full overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
-                              onClick={() => openVideo(item)}
-                            >
-                              <img
-                                src={`https://img.youtube.com/vi/${vidId}/mqdefault.jpg`}
-                                alt=""
-                                className="h-full w-full object-cover transition group-hover:opacity-90"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition group-hover:bg-black/40">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90">
-                                  <Play className="h-7 w-7 text-primary ml-1" />
+                          <div className="relative">
+                            {vidId ? (
+                              <button
+                                type="button"
+                                className="relative aspect-video w-full overflow-hidden bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                                onClick={() => openVideo(item)}
+                              >
+                                <img
+                                  src={`https://img.youtube.com/vi/${vidId}/mqdefault.jpg`}
+                                  alt=""
+                                  className="h-full w-full object-cover transition group-hover:opacity-90"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition group-hover:bg-black/40">
+                                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90">
+                                    <Play className="h-7 w-7 text-primary ml-1" />
+                                  </div>
                                 </div>
+                              </button>
+                            ) : (
+                              <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                                <span className="text-muted-foreground text-sm">No video</span>
                               </div>
-                            </button>
-                          ) : (
-                            <div className="aspect-video w-full bg-muted flex items-center justify-center">
-                              <span className="text-muted-foreground text-sm">No video</span>
-                            </div>
-                          )}
+                            )}
+                            <CarouselPrevious
+                              className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
+                            />
+                            <CarouselNext
+                              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
+                            />
+                          </div>
                           <div className="flex flex-1 flex-col p-4">
                             <h3 className="font-semibold text-lg">{item.scriptName}</h3>
                             <p className="text-sm text-muted-foreground">{item.gameName}</p>
@@ -452,8 +466,6 @@ export default function Landing() {
                     );
                   })}
                 </CarouselContent>
-                <CarouselPrevious className="!left-0 top-1/2 -translate-y-1/2 z-20 bg-background/70 backdrop-blur border" />
-                <CarouselNext className="!right-0 top-1/2 -translate-y-1/2 z-20 bg-background/70 backdrop-blur border" />
               </Carousel>
             </div>
             {/* Desktop grid */}
