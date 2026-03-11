@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Team } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type TeamForm = {
   fullName: string;
@@ -41,12 +42,55 @@ const defaultForm: TeamForm = {
   sortOrder: 0,
 };
 
+function normalizeUrl(value: string): string {
+  const v = value.trim();
+  if (!v) return "";
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  if (v.startsWith("//")) return `https:${v}`;
+  return `https://${v}`;
+}
+
+function buildPayload(form: TeamForm) {
+  const trimOrEmpty = (v: string) => v.trim();
+  const emptyToUndefined = (v: string) => {
+    const t = v.trim();
+    return t === "" ? undefined : t;
+  };
+
+  return {
+    fullName: trimOrEmpty(form.fullName),
+    role: trimOrEmpty(form.role),
+    photoUrl: trimOrEmpty(form.photoUrl),
+    description: emptyToUndefined(form.description),
+    instagram: form.instagram.trim() ? normalizeUrl(form.instagram) : undefined,
+    linkedin: form.linkedin.trim() ? normalizeUrl(form.linkedin) : undefined,
+    github: form.github.trim() ? normalizeUrl(form.github) : undefined,
+    twitter: form.twitter.trim() ? normalizeUrl(form.twitter) : undefined,
+    skill1: emptyToUndefined(form.skill1),
+    skill2: emptyToUndefined(form.skill2),
+    skill3: emptyToUndefined(form.skill3),
+    skill4: emptyToUndefined(form.skill4),
+    sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 0,
+  };
+}
+
 export default function TeamsAdmin() {
-  const { data: items = [], isLoading } = useQuery<Team[]>({
+  const { toast } = useToast();
+  const { data: items = [], isLoading, error } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
     queryFn: async () => {
       const res = await fetch("/api/teams");
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const text = await res.text();
+        let message = "Gagal mengambil data teams";
+        try {
+          const json = JSON.parse(text);
+          message = json.message || message;
+        } catch {
+          message = text || message;
+        }
+        throw new Error(message);
+      }
       return res.json();
     },
   });
@@ -57,23 +101,30 @@ export default function TeamsAdmin() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: (data: TeamForm) => apiRequest("POST", "/api/teams", data),
+    mutationFn: (data: TeamForm) => apiRequest("POST", "/api/teams", buildPayload(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setDialogOpen(false);
       setForm({ ...defaultForm });
+      toast({ title: "Anggota ditambahkan" });
+    },
+    onError: (e: Error) => {
+      const msg = e.message.includes("relation") && e.message.includes("teams") ? "Tabel teams belum ada. Jalankan db:push dulu." : e.message;
+      toast({ title: "Gagal menambah anggota", description: msg, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<typeof defaultForm> }) =>
-      apiRequest("PATCH", `/api/teams/${id}`, data),
+    mutationFn: ({ id, data }: { id: number; data: TeamForm }) =>
+      apiRequest("PATCH", `/api/teams/${id}`, buildPayload(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setDialogOpen(false);
       setEditing(null);
       setForm({ ...defaultForm });
+      toast({ title: "Anggota diupdate" });
     },
+    onError: (e: Error) => toast({ title: "Gagal update anggota", description: e.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -81,7 +132,9 @@ export default function TeamsAdmin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setDeleteId(null);
+      toast({ title: "Anggota dihapus" });
     },
+    onError: (e: Error) => toast({ title: "Gagal hapus anggota", description: e.message, variant: "destructive" }),
   });
 
   const openAdd = () => {
@@ -112,6 +165,13 @@ export default function TeamsAdmin() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const fullName = form.fullName.trim();
+    const role = form.role.trim();
+    const photoUrl = form.photoUrl.trim();
+    if (!fullName || !role || !photoUrl) {
+      toast({ title: "Lengkapi data wajib", description: "Nama, Role, dan Foto URL wajib diisi.", variant: "destructive" });
+      return;
+    }
     if (editing) {
       updateMutation.mutate({ id: editing.id, data: form });
     } else {
@@ -141,6 +201,13 @@ export default function TeamsAdmin() {
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">{(error as Error).message}</p>
+              <Button className="mt-4" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/teams"] })}>
+                Refresh
+              </Button>
             </div>
           ) : items.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">Belum ada anggota. Tambahkan untuk tampil di landing.</p>
@@ -191,12 +258,41 @@ export default function TeamsAdmin() {
             <div className="grid gap-3 sm:grid-cols-[7rem_1fr]">
               <div className="sm:row-span-3">
                 <Label>Foto URL</Label>
-                <Input
-                  value={form.photoUrl}
-                  onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
-                  placeholder="https://..."
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    inputMode="url"
+                    value={form.photoUrl}
+                    onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData("text");
+                      if (text) {
+                        e.preventDefault();
+                        setForm((prev) => ({ ...prev, photoUrl: text }));
+                      }
+                    }}
+                    placeholder="https://..."
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (!text) {
+                          toast({ title: "Clipboard kosong", variant: "destructive" });
+                          return;
+                        }
+                        setForm((prev) => ({ ...prev, photoUrl: text }));
+                      } catch (e) {
+                        toast({ title: "Gagal paste", description: e instanceof Error ? e.message : "Clipboard tidak bisa diakses", variant: "destructive" });
+                      }
+                    }}
+                  >
+                    Paste
+                  </Button>
+                </div>
                 {form.photoUrl && (
                   <div className="mt-2 h-28 w-28 overflow-hidden rounded-full border bg-muted">
                     <img src={form.photoUrl} alt="Preview" className="h-full w-full object-cover" />
@@ -291,6 +387,7 @@ export default function TeamsAdmin() {
 
             <div className="flex justify-end gap-2">
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {editing ? "Simpan Perubahan" : "Tambah"}
               </Button>
             </div>
