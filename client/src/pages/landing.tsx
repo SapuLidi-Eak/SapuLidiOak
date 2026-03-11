@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -11,6 +11,8 @@ import {
   Sparkles,
   Gamepad2,
   Play,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Eye,
   Gift,
@@ -26,6 +28,7 @@ import {
 import type { Showcase, Package } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { HeaderLogo } from "@/components/header-logo";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,10 +39,6 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-} from "@/components/ui/carousel";
-import {
-  CarouselPrevious,
-  CarouselNext,
 } from "@/components/ui/carousel";
 
 function formatIdr(value: string | number): string {
@@ -66,10 +65,83 @@ function getYoutubeId(url: string | null): string {
 
 const DISCORD_INVITE = "https://discord.gg/vGT2km9gh";
 
+function MobileCarouselControls({ api }: { api: any }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [snapCount, setSnapCount] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+
+    const sync = () => {
+      setSnapCount(api.scrollSnapList().length);
+      setSelectedIndex(api.selectedScrollSnap());
+    };
+
+    sync();
+    api.on("reInit", sync);
+    api.on("select", sync);
+    return () => {
+      api.off("reInit", sync);
+      api.off("select", sync);
+    };
+  }, [api]);
+
+  if (!api || snapCount <= 1) return null;
+
+  const canPrev = api.canScrollPrev();
+  const canNext = api.canScrollNext();
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-11 w-11 rounded-full bg-background/70 backdrop-blur"
+        onClick={() => api.scrollPrev()}
+        disabled={!canPrev}
+        aria-label="Sebelumnya"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: snapCount }).map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => api.scrollTo(i)}
+            className={cn(
+              "h-2 w-2 rounded-full transition-all",
+              i === selectedIndex ? "w-7 bg-primary" : "bg-muted-foreground/35",
+            )}
+            aria-label={`Slide ${i + 1}`}
+            aria-current={i === selectedIndex}
+          />
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-11 w-11 rounded-full bg-background/70 backdrop-blur"
+        onClick={() => api.scrollNext()}
+        disabled={!canNext}
+        aria-label="Berikutnya"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </Button>
+    </div>
+  );
+}
+
 export default function Landing() {
   const [filterType, setFilterType] = useState<"all" | "free" | "premium">("all");
   const [filterGame, setFilterGame] = useState<string>("all");
   const [videoModal, setVideoModal] = useState<{ id: number; vidId: string } | null>(null);
+  const [packagesApi, setPackagesApi] = useState<any>(null);
+  const [showcaseApi, setShowcaseApi] = useState<any>(null);
 
   const { data: showcaseItems = [] } = useQuery<Showcase[]>({
     queryKey: ["/api/showcase"],
@@ -222,7 +294,7 @@ export default function Landing() {
             <p className="text-center text-muted-foreground mb-8 md:mb-10">Pilih durasi dan beli key via Discord.</p>
             {/* Mobile carousel */}
             <div className="sm:hidden">
-              <Carousel className="relative">
+              <Carousel className="relative" setApi={setPackagesApi} opts={{ align: "start" }}>
                 <CarouselContent>
                   {packageItems.map((pkg) => {
                     const features = [pkg.feature1, pkg.feature2, pkg.feature3, pkg.feature4].filter(Boolean);
@@ -265,12 +337,6 @@ export default function Landing() {
                                 </a>
                               </Button>
                             </div>
-                            <CarouselPrevious
-                              className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
-                            />
-                            <CarouselNext
-                              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
-                            />
                           </div>
                         </div>
                       </CarouselItem>
@@ -278,6 +344,7 @@ export default function Landing() {
                   })}
                 </CarouselContent>
               </Carousel>
+              <MobileCarouselControls api={packagesApi} />
             </div>
             {/* Desktop grid */}
             <div className="hidden sm:grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl mx-auto">
@@ -392,7 +459,7 @@ export default function Landing() {
             </div>
             {/* Mobile carousel */}
             <div className="sm:hidden">
-              <Carousel>
+              <Carousel setApi={setShowcaseApi} opts={{ align: "start" }}>
                 <CarouselContent>
                   {filtered.map((item) => {
                     const vidId = getYoutubeId(item.youtubeUrl);
@@ -455,18 +522,13 @@ export default function Landing() {
                               </li>
                             </ul>
                           </div>
-                          <CarouselPrevious
-                            className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
-                          />
-                          <CarouselNext
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full border border-primary/40 bg-background/60 backdrop-blur shadow-[0_0_10px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_18px_hsl(var(--primary)/0.9)]"
-                          />
                         </div>
                       </CarouselItem>
                     );
                   })}
                 </CarouselContent>
               </Carousel>
+              <MobileCarouselControls api={showcaseApi} />
             </div>
             {/* Desktop grid */}
             <div className="hidden sm:grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">

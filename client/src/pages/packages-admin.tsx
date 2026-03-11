@@ -121,7 +121,7 @@ export default function PackagesAdmin() {
       feature4: item.feature4 ?? "",
       buyLink: item.buyLink ?? "",
       imageUrl: item.imageUrl ?? "",
-      isPopular: item.isPopular ?? 0,
+      isPopular: item.isPopular === 1 ? 1 : 0,
       sortOrder: item.sortOrder ?? 0,
     });
     setDialogOpen(true);

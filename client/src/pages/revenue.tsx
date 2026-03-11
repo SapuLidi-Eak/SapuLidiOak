@@ -225,7 +225,7 @@ export default function Revenue() {
                           {tx.keyCode.slice(0, 9)}...
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" size="sm">
+                          <Badge variant="secondary" className="text-xs">
                             {tx.durationMonths}M
                           </Badge>
                         </TableCell>
