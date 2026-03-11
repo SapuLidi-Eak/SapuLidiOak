@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Key, LayoutDashboard, Plus, DollarSign, Settings, LogOut, ExternalLink, LayoutGrid, Package } from "lucide-react";
+import { Key, LayoutDashboard, Plus, DollarSign, Settings, LogOut, ExternalLink, LayoutGrid, Package, Users } from "lucide-react";
 import { HeaderLogo } from "@/components/header-logo";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ const menuItems = [
   { title: "Revenue", url: "/kings/revenue", icon: DollarSign },
   { title: "Showcase", url: "/kings/showcase", icon: LayoutGrid },
   { title: "Packages", url: "/kings/packages", icon: Package },
+  { title: "Teams", url: "/kings/teams", icon: Users },
   { title: "Settings", url: "/kings/settings", icon: Settings },
 ];
 

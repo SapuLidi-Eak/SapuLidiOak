@@ -4,6 +4,7 @@ import {
   logs,
   showcase,
   packages,
+  teams,
   type Admin,
   type InsertAdmin,
   type Key,
@@ -14,6 +15,8 @@ import {
   type InsertShowcase,
   type Package,
   type InsertPackage,
+  type Team,
+  type InsertTeam,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, gte, and, sql, like, or } from "drizzle-orm";
@@ -81,6 +84,12 @@ export interface IStorage {
   createPackage(data: InsertPackage): Promise<Package>;
   updatePackage(id: number, data: Partial<Package>): Promise<Package | undefined>;
   deletePackage(id: number): Promise<boolean>;
+
+  getAllTeams(): Promise<Team[]>;
+  getTeam(id: number): Promise<Team | undefined>;
+  createTeam(data: InsertTeam): Promise<Team>;
+  updateTeam(id: number, data: Partial<Team>): Promise<Team | undefined>;
+  deleteTeam(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -498,6 +507,37 @@ export class DatabaseStorage implements IStorage {
 
   async deletePackage(id: number): Promise<boolean> {
     const result = await db.delete(packages).where(eq(packages.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getAllTeams(): Promise<Team[]> {
+    return db
+      .select()
+      .from(teams)
+      .orderBy(asc(teams.sortOrder), asc(teams.id));
+  }
+
+  async getTeam(id: number): Promise<Team | undefined> {
+    const [row] = await db.select().from(teams).where(eq(teams.id, id));
+    return row || undefined;
+  }
+
+  async createTeam(data: InsertTeam): Promise<Team> {
+    const [created] = await db.insert(teams).values(data).returning();
+    return created;
+  }
+
+  async updateTeam(id: number, data: Partial<Team>): Promise<Team | undefined> {
+    const [updated] = await db
+      .update(teams)
+      .set(data)
+      .where(eq(teams.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id)).returning();
     return result.length > 0;
   }
 }

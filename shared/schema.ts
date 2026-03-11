@@ -75,6 +75,24 @@ export const packages = pgTable("packages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  fullName: text("full_name").notNull(),
+  role: text("role").notNull(),
+  photoUrl: text("photo_url").notNull(),
+  description: text("description"),
+  instagram: text("instagram"),
+  linkedin: text("linkedin"),
+  github: text("github"),
+  twitter: text("twitter"),
+  skill1: text("skill_1"),
+  skill2: text("skill_2"),
+  skill3: text("skill_3"),
+  skill4: text("skill_4"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const keysRelations = relations(keys, ({ many }) => ({
   logs: many(logs),
 }));
@@ -142,6 +160,11 @@ export const insertPackageSchema = createInsertSchema(packages).omit({
   createdAt: true,
 });
 
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Key = typeof keys.$inferSelect;
@@ -152,3 +175,5 @@ export type Showcase = typeof showcase.$inferSelect;
 export type InsertShowcase = z.infer<typeof insertShowcaseSchema>;
 export type Package = typeof packages.$inferSelect;
 export type InsertPackage = z.infer<typeof insertPackageSchema>;
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;

@@ -20,6 +20,7 @@ import Revenue from "@/pages/revenue";
 import Settings from "@/pages/settings";
 import ShowcaseAdmin from "@/pages/showcase-admin";
 import PackagesAdmin from "@/pages/packages-admin";
+import TeamsAdmin from "@/pages/teams-admin";
 import BeliSekarang from "@/pages/beli";
 
 function ThemeToggle() {
@@ -51,6 +52,7 @@ function AdminProtectedRouter() {
       <Route path="/kings/settings" component={Settings} />
       <Route path="/kings/showcase" component={ShowcaseAdmin} />
       <Route path="/kings/packages" component={PackagesAdmin} />
+      <Route path="/kings/teams" component={TeamsAdmin} />
       <Route component={NotFound} />
     </Switch>
   );
