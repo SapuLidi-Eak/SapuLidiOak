@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Key as KeyType } from "@shared/schema";
+import type { Key as KeyType, Package } from "@shared/schema";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -105,19 +105,30 @@ export default function Keys() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [packageFilter, setPackageFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<KeyType | null>(null);
   const [actionType, setActionType] = useState<"delete" | "blacklist" | "reset" | null>(null);
   const { toast } = useToast();
 
+  const { data: packages = [] } = useQuery<Package[]>({
+    queryKey: ["/api/packages"],
+    queryFn: async () => {
+      const res = await fetch("/api/packages");
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const { data, isLoading } = useQuery<KeysResponse>({
-    queryKey: ["/api/keys", page, PAGE_SIZE, statusFilter, search],
+    queryKey: ["/api/keys", page, PAGE_SIZE, statusFilter, packageFilter, search],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(page),
         limit: String(PAGE_SIZE),
         status: statusFilter,
+        packageId: packageFilter,
         search: search,
       });
       const res = await fetch(`/api/keys?${params}`, {
@@ -141,6 +152,11 @@ export default function Keys() {
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
+    setPage(1);
+  };
+
+  const handlePackageChange = (value: string) => {
+    setPackageFilter(value);
     setPage(1);
   };
 
@@ -228,7 +244,9 @@ export default function Keys() {
       key.status,
       key.robloxUsername ?? "",
       String(key.executionCount ?? 0),
-      `${key.durationMonths} months`,
+      key.durationDays != null && Number(key.durationDays) > 0
+        ? `${key.durationDays} days`
+        : `${key.durationMonths} months`,
       `$${key.price}`,
       formatDate(key.createdAt),
       formatDate(key.activatedAt),
@@ -317,6 +335,20 @@ export default function Keys() {
                   <SelectItem value="blacklisted">Blacklisted</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={packageFilter} onValueChange={handlePackageChange}>
+                <SelectTrigger className="w-44" data-testid="select-package-filter">
+                  <SelectValue placeholder="Package" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All packages</SelectItem>
+                  <SelectItem value="none">Generic (no package)</SelectItem>
+                  {packages.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -381,7 +413,11 @@ export default function Keys() {
                           {key.executionCount ?? 0}
                         </span>
                       </TableCell>
-                      <TableCell>{key.durationMonths} month{key.durationMonths > 1 ? "s" : ""}</TableCell>
+                      <TableCell>
+                        {key.durationDays != null && Number(key.durationDays) > 0
+                          ? `${key.durationDays} day${Number(key.durationDays) > 1 ? "s" : ""}`
+                          : `${key.durationMonths} month${key.durationMonths > 1 ? "s" : ""}`}
+                      </TableCell>
                       <TableCell>${key.price}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(key.createdAt)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(key.expiresAt)}</TableCell>

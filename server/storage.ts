@@ -61,8 +61,8 @@ export interface IStorage {
   getOrdersTotal(filters?: { status?: string }): Promise<number>;
 
   getAllKeys(): Promise<Key[]>;
-  getKeysPaginated(limit: number, offset: number, filters?: { status?: string; search?: string }): Promise<Key[]>;
-  getKeysTotal(filters?: { status?: string; search?: string }): Promise<number>;
+  getKeysPaginated(limit: number, offset: number, filters?: { status?: string; search?: string; packageId?: string }): Promise<Key[]>;
+  getKeysTotal(filters?: { status?: string; search?: string; packageId?: string }): Promise<number>;
   getKey(id: number): Promise<Key | undefined>;
   getKeyByCode(keyCode: string): Promise<Key | undefined>;
   createKey(key: InsertKey & { keyCode: string }): Promise<Key>;
@@ -359,10 +359,20 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(keys).orderBy(desc(keys.createdAt));
   }
 
-  private buildKeysFilter(filters?: { status?: string; search?: string }) {
+  private buildKeysFilter(filters?: { status?: string; search?: string; packageId?: string }) {
     const conditions = [];
     if (filters?.status && filters.status !== "all") {
       conditions.push(eq(keys.status, filters.status as Key["status"]));
+    }
+    if (filters?.packageId && filters.packageId !== "all") {
+      if (filters.packageId === "none") {
+        conditions.push(isNull(keys.packageId));
+      } else {
+        const id = parseInt(filters.packageId, 10);
+        if (!Number.isNaN(id)) {
+          conditions.push(eq(keys.packageId, id));
+        }
+      }
     }
     if (filters?.search?.trim()) {
       const term = `%${filters.search.trim()}%`;
@@ -380,7 +390,7 @@ export class DatabaseStorage implements IStorage {
   async getKeysPaginated(
     limit: number,
     offset: number,
-    filters?: { status?: string; search?: string }
+    filters?: { status?: string; search?: string; packageId?: string }
   ): Promise<Key[]> {
     const where = this.buildKeysFilter(filters);
     const query = db
@@ -395,7 +405,7 @@ export class DatabaseStorage implements IStorage {
     return query;
   }
 
-  async getKeysTotal(filters?: { status?: string; search?: string }): Promise<number> {
+  async getKeysTotal(filters?: { status?: string; search?: string; packageId?: string }): Promise<number> {
     const where = this.buildKeysFilter(filters);
     const query = db.select({ count: sql<number>`count(*)::int` }).from(keys);
     const result = where ? await query.where(where) : await query;
@@ -496,6 +506,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(keys.status, "available"),
           isNull(keys.packageId),
+          isNull(keys.durationDays),
           eq(keys.durationMonths, params.durationMonths),
           eq(keys.price, params.price),
         ),
@@ -523,20 +534,30 @@ export class DatabaseStorage implements IStorage {
       if (!pkg) throw new HttpError(404, "Package not found");
 
       const durationMonths = Math.max(1, Math.ceil((pkg.durationDays || 30) / 30));
+      const durationDays = pkg.durationDays || 0;
 
       const exactKey = await tx.execute<{ id: number }>(
         sql`select id from keys where status = 'available' and package_id = ${locked.package_id} order by id asc limit 1 for update skip locked`,
       );
       const exactId = exactKey.rows[0]?.id;
 
-      const fallbackKey = exactId
+      const dayFallbackKey = exactId
+        ? null
+        : durationDays > 0
+          ? await tx.execute<{ id: number }>(
+              sql`select id from keys where status = 'available' and package_id is null and duration_days = ${durationDays} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
+            )
+          : null;
+      const dayFallbackId = dayFallbackKey ? dayFallbackKey.rows[0]?.id : undefined;
+
+      const monthFallbackKey = exactId || dayFallbackId
         ? null
         : await tx.execute<{ id: number }>(
-            sql`select id from keys where status = 'available' and package_id is null and duration_months = ${durationMonths} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
+            sql`select id from keys where status = 'available' and package_id is null and duration_days is null and duration_months = ${durationMonths} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
           );
-      const fallbackId = fallbackKey ? fallbackKey.rows[0]?.id : undefined;
+      const monthFallbackId = monthFallbackKey ? monthFallbackKey.rows[0]?.id : undefined;
 
-      const selectedId = exactId ?? fallbackId;
+      const selectedId = exactId ?? dayFallbackId ?? monthFallbackId;
       if (!selectedId) throw new HttpError(409, "Stock kosong untuk paket ini");
 
       const [claimed] = await tx
@@ -587,15 +608,17 @@ export class DatabaseStorage implements IStorage {
       const [pkg] = await tx.select().from(packages).where(eq(packages.id, locked.package_id));
       if (!pkg) throw new HttpError(404, "Package not found");
       const durationMonths = Math.max(1, Math.ceil((pkg.durationDays || 30) / 30));
+      const durationDays = pkg.durationDays || 0;
 
       const keyLock = await tx.execute<{
         id: number;
         status: string;
         package_id: number | null;
         duration_months: number;
+        duration_days: number | null;
         price: string;
       }>(
-        sql`select id, status, package_id, duration_months, price from keys where key_code = ${code} for update`,
+        sql`select id, status, package_id, duration_months, duration_days, price from keys where key_code = ${code} for update`,
       );
       const k = keyLock.rows[0];
       if (!k) throw new HttpError(404, "Key not found");
@@ -605,7 +628,11 @@ export class DatabaseStorage implements IStorage {
       if (keyPackageId != null) {
         if (keyPackageId !== locked.package_id) throw new HttpError(400, "Key ini bukan untuk package order tersebut");
       } else {
-        if (k.duration_months !== durationMonths) throw new HttpError(400, "Durasi key tidak sesuai dengan package order");
+        if (k.duration_days != null) {
+          if (k.duration_days !== durationDays) throw new HttpError(400, "Durasi key tidak sesuai dengan package order");
+        } else {
+          if (k.duration_months !== durationMonths) throw new HttpError(400, "Durasi key tidak sesuai dengan package order");
+        }
         if (String(k.price) !== String(locked.price)) throw new HttpError(400, "Harga key tidak sesuai dengan order");
       }
 
@@ -655,20 +682,30 @@ export class DatabaseStorage implements IStorage {
       if (!pkg) throw new HttpError(404, "Package not found");
 
       const durationMonths = Math.max(1, Math.ceil((pkg.durationDays || 30) / 30));
+      const durationDays = pkg.durationDays || 0;
 
       const exactKey = await tx.execute<{ id: number }>(
         sql`select id from keys where status = 'available' and package_id = ${locked.package_id} order by id asc limit 1 for update skip locked`,
       );
       const exactId = exactKey.rows[0]?.id;
 
-      const fallbackKey = exactId
+      const dayFallbackKey = exactId
+        ? null
+        : durationDays > 0
+          ? await tx.execute<{ id: number }>(
+              sql`select id from keys where status = 'available' and package_id is null and duration_days = ${durationDays} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
+            )
+          : null;
+      const dayFallbackId = dayFallbackKey ? dayFallbackKey.rows[0]?.id : undefined;
+
+      const monthFallbackKey = exactId || dayFallbackId
         ? null
         : await tx.execute<{ id: number }>(
-            sql`select id from keys where status = 'available' and package_id is null and duration_months = ${durationMonths} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
+            sql`select id from keys where status = 'available' and package_id is null and duration_days is null and duration_months = ${durationMonths} and price = ${locked.price} order by id asc limit 1 for update skip locked`,
           );
-      const fallbackId = fallbackKey ? fallbackKey.rows[0]?.id : undefined;
+      const monthFallbackId = monthFallbackKey ? monthFallbackKey.rows[0]?.id : undefined;
 
-      const selectedId = exactId ?? fallbackId;
+      const selectedId = exactId ?? dayFallbackId ?? monthFallbackId;
       if (!selectedId) throw new HttpError(409, "Stock kosong untuk paket ini");
 
       const [claimed] = await tx
@@ -1057,8 +1094,18 @@ export class DatabaseStorage implements IStorage {
         count: sql<number>`count(*)::int`,
       })
       .from(keys)
-      .where(and(eq(keys.status, "available"), isNull(keys.packageId)))
+      .where(and(eq(keys.status, "available"), isNull(keys.packageId), isNull(keys.durationDays)))
       .groupBy(keys.durationMonths, keys.price);
+
+    const genericDayRows = await db
+      .select({
+        durationDays: keys.durationDays,
+        price: keys.price,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(keys)
+      .where(and(eq(keys.status, "available"), isNull(keys.packageId), sql`${keys.durationDays} is not null`))
+      .groupBy(keys.durationDays, keys.price);
 
     const exactByPackageId = new Map<number, number>();
     for (const r of exactRows) {
@@ -1072,10 +1119,18 @@ export class DatabaseStorage implements IStorage {
       genericByBucket.set(key, r.count ?? 0);
     }
 
+    const genericDayByBucket = new Map<string, number>();
+    for (const r of genericDayRows) {
+      const key = `${Number(r.durationDays ?? 0)}|${String(r.price)}`;
+      genericDayByBucket.set(key, r.count ?? 0);
+    }
+
     return pkgRows.map((p) => {
       const durationMonths = Math.max(1, Math.ceil((p.durationDays || 30) / 30));
       const exactAvailable = exactByPackageId.get(p.id) ?? 0;
-      const genericAvailable = genericByBucket.get(`${durationMonths}|${String(p.price)}`) ?? 0;
+      const genericMonthAvailable = genericByBucket.get(`${durationMonths}|${String(p.price)}`) ?? 0;
+      const genericDayAvailable = genericDayByBucket.get(`${Number(p.durationDays || 0)}|${String(p.price)}`) ?? 0;
+      const genericAvailable = genericMonthAvailable + genericDayAvailable;
       return {
         id: p.id,
         title: p.title,

@@ -67,6 +67,7 @@ export const keys = pgTable("keys", {
   id: serial("id").primaryKey(),
   keyCode: varchar("key_code", { length: 19 }).notNull().unique(),
   durationMonths: integer("duration_months").notNull(),
+  durationDays: integer("duration_days"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   status: keyStatusEnum("status").default("available").notNull(),
   packageId: integer("package_id").references(() => packages.id),
@@ -226,11 +227,15 @@ export const validateKeySchema = z.object({
 });
 
 export const generateKeysSchema = z.object({
-  durationMonths: z.number().min(1).max(12),
+  durationMonths: z.number().min(1).max(12).optional(),
+  durationDays: z.number().min(1).max(3650).optional(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format"),
   quantity: z.number().min(1).max(100),
   packageId: z.number().int().positive().optional(),
   notes: z.string().optional(),
+}).refine((v) => v.durationMonths != null || v.durationDays != null, {
+  message: "Duration is required",
+  path: ["durationMonths"],
 });
 
 export const scriptExecuteSchema = z.object({

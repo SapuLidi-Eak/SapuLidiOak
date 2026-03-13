@@ -965,11 +965,12 @@ export async function registerRoutes(
       const limit = Math.min(100, Math.max(10, parseInt(req.query.limit as string) || 20));
       const status = (req.query.status as string) || "all";
       const search = (req.query.search as string) || "";
+      const packageId = (req.query.packageId as string) || "all";
       const offset = (page - 1) * limit;
 
       const [keysList, total] = await Promise.all([
-        storage.getKeysPaginated(limit, offset, { status, search }),
-        storage.getKeysTotal({ status, search }),
+        storage.getKeysPaginated(limit, offset, { status, search, packageId }),
+        storage.getKeysTotal({ status, search, packageId }),
       ]);
       res.json({ keys: keysList, total });
     } catch (error) {
@@ -982,6 +983,7 @@ export async function registerRoutes(
     try {
       const data = generateKeysSchema.parse(req.body);
       const generatedKeys = [];
+      const durationMonths = data.durationMonths ?? Math.max(1, Math.ceil((data.durationDays || 0) / 30));
 
       for (let i = 0; i < data.quantity; i++) {
         let keyCode: string;
@@ -995,7 +997,8 @@ export async function registerRoutes(
 
         const key = await storage.createKey({
           keyCode: keyCode!,
-          durationMonths: data.durationMonths,
+          durationMonths,
+          ...(data.durationDays != null ? { durationDays: data.durationDays } : {}),
           price: data.price,
           ...(data.packageId !== undefined ? { packageId: data.packageId } : {}),
           notes: data.notes || null,
@@ -1006,7 +1009,7 @@ export async function registerRoutes(
         await storage.createLog({
           action: "created",
           keyId: key.id,
-          details: `Key generated with ${data.durationMonths} month duration`,
+          details: data.durationDays != null ? `Key generated with ${data.durationDays} day duration` : `Key generated with ${durationMonths} month duration`,
         });
       }
 
@@ -1158,7 +1161,11 @@ export async function registerRoutes(
       if (key.status === "unused" || key.status === "available" || key.status === "sold") {
         const activatedAt = new Date();
         const expiresAt = new Date(activatedAt);
-        expiresAt.setMonth(expiresAt.getMonth() + key.durationMonths);
+        if (key.durationDays != null && Number(key.durationDays) > 0) {
+          expiresAt.setDate(expiresAt.getDate() + Number(key.durationDays));
+        } else {
+          expiresAt.setMonth(expiresAt.getMonth() + key.durationMonths);
+        }
 
         const updateData: { status: "active"; hwid: string; activatedAt: Date; expiresAt: Date; robloxUsername?: string } = {
           status: "active",

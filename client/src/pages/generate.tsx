@@ -25,11 +25,20 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Key, Package } from "@shared/schema";
 
 const generateSchema = z.object({
-  durationMonths: z.number().min(1).max(12),
+  durationKind: z.enum(["months", "days"]),
+  durationMonths: z.number().min(1).max(12).optional(),
+  durationDays: z.number().min(1).max(3650).optional(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format"),
   quantity: z.number().min(1).max(100),
   packageId: z.number().int().positive().optional(),
   notes: z.string().optional(),
+}).superRefine((v, ctx) => {
+  if (v.durationKind === "months" && v.durationMonths == null) {
+    ctx.addIssue({ code: "custom", message: "Duration is required", path: ["durationMonths"] });
+  }
+  if (v.durationKind === "days" && v.durationDays == null) {
+    ctx.addIssue({ code: "custom", message: "Duration is required", path: ["durationDays"] });
+  }
 });
 
 type GenerateFormData = z.infer<typeof generateSchema>;
@@ -45,6 +54,8 @@ const durationOptions = [
 export default function Generate() {
   const [generatedKeys, setGeneratedKeys] = useState<Key[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [dayPreset, setDayPreset] = useState<"1" | "7" | "custom">("1");
+  const [customDayValue, setCustomDayValue] = useState<string>("1");
   const { toast } = useToast();
 
   const { data: packages = [] } = useQuery<Package[]>({
@@ -59,7 +70,9 @@ export default function Generate() {
   const form = useForm<GenerateFormData>({
     resolver: zodResolver(generateSchema),
     defaultValues: {
+      durationKind: "months",
       durationMonths: 1,
+      durationDays: 1,
       price: "9.99",
       quantity: 1,
       packageId: undefined,
@@ -68,7 +81,8 @@ export default function Generate() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: (data: GenerateFormData) => apiRequest("POST", "/api/keys/generate", data),
+    mutationFn: (data: { durationMonths?: number; durationDays?: number; price: string; quantity: number; packageId?: number; notes?: string }) =>
+      apiRequest("POST", "/api/keys/generate", data),
     onSuccess: (data) => {
       setGeneratedKeys(data.keys);
       queryClient.invalidateQueries({ queryKey: ["/api/keys"] });
@@ -88,7 +102,23 @@ export default function Generate() {
   });
 
   const onSubmit = (data: GenerateFormData) => {
-    generateMutation.mutate(data);
+    const payload =
+      data.durationKind === "days"
+        ? {
+            durationDays: data.durationDays,
+            price: data.price,
+            quantity: data.quantity,
+            packageId: data.packageId,
+            notes: data.notes,
+          }
+        : {
+            durationMonths: data.durationMonths,
+            price: data.price,
+            quantity: data.quantity,
+            packageId: data.packageId,
+            notes: data.notes,
+          };
+    generateMutation.mutate(payload);
   };
 
   const copyToClipboard = (key: string) => {
@@ -131,38 +161,161 @@ export default function Generate() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="durationMonths"
+                  name="durationKind"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Duration</FormLabel>
                       <FormControl>
                         <RadioGroup
-                          value={field.value.toString()}
-                          onValueChange={(val) => field.onChange(parseInt(val))}
-                          className="grid grid-cols-3 gap-2 sm:grid-cols-5"
+                          value={field.value}
+                          onValueChange={(val) => field.onChange(val as "months" | "days")}
+                          className="grid grid-cols-2 gap-2"
                         >
-                          {durationOptions.map((option) => (
-                            <div key={option.value}>
-                              <RadioGroupItem
-                                value={option.value.toString()}
-                                id={`duration-${option.value}`}
-                                className="peer sr-only"
-                              />
-                              <Label
-                                htmlFor={`duration-${option.value}`}
-                                className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
-                                data-testid={`radio-duration-${option.value}`}
-                              >
-                                <span className="font-medium">{option.label}</span>
-                              </Label>
-                            </div>
-                          ))}
+                          <div>
+                            <RadioGroupItem value="months" id="duration-kind-months" className="peer sr-only" />
+                            <Label
+                              htmlFor="duration-kind-months"
+                              className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                            >
+                              <span className="font-medium">Months</span>
+                            </Label>
+                          </div>
+                          <div>
+                            <RadioGroupItem value="days" id="duration-kind-days" className="peer sr-only" />
+                            <Label
+                              htmlFor="duration-kind-days"
+                              className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                            >
+                              <span className="font-medium">Days</span>
+                            </Label>
+                          </div>
                         </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {form.watch("durationKind") === "months" ? (
+                  <FormField
+                    control={form.control}
+                    name="durationMonths"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            value={String(field.value ?? 1)}
+                            onValueChange={(val) => {
+                              form.setValue("durationDays", undefined);
+                              field.onChange(parseInt(val, 10));
+                            }}
+                            className="grid grid-cols-3 gap-2 sm:grid-cols-5"
+                          >
+                            {durationOptions.map((option) => (
+                              <div key={option.value}>
+                                <RadioGroupItem
+                                  value={option.value.toString()}
+                                  id={`duration-months-${option.value}`}
+                                  className="peer sr-only"
+                                />
+                                <Label
+                                  htmlFor={`duration-months-${option.value}`}
+                                  className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                                  data-testid={`radio-duration-${option.value}`}
+                                >
+                                  <span className="font-medium">{option.label}</span>
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="durationDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="space-y-3">
+                            <RadioGroup
+                              value={dayPreset}
+                              onValueChange={(val) => {
+                                const v = val as "1" | "7" | "custom";
+                                setDayPreset(v);
+                                form.setValue("durationMonths", undefined);
+                                if (v === "1") field.onChange(1);
+                                if (v === "7") field.onChange(7);
+                                if (v === "custom") {
+                                  const current = field.value ?? 1;
+                                  setCustomDayValue(String(current));
+                                  field.onChange(current);
+                                }
+                              }}
+                              className="grid grid-cols-3 gap-2"
+                            >
+                              <div>
+                                <RadioGroupItem value="1" id="duration-days-1" className="peer sr-only" />
+                                <Label
+                                  htmlFor="duration-days-1"
+                                  className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                                >
+                                  <span className="font-medium">1 Day</span>
+                                </Label>
+                              </div>
+                              <div>
+                                <RadioGroupItem value="7" id="duration-days-7" className="peer sr-only" />
+                                <Label
+                                  htmlFor="duration-days-7"
+                                  className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                                >
+                                  <span className="font-medium">7 Days</span>
+                                </Label>
+                              </div>
+                              <div>
+                                <RadioGroupItem value="custom" id="duration-days-custom" className="peer sr-only" />
+                                <Label
+                                  htmlFor="duration-days-custom"
+                                  className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10"
+                                >
+                                  <span className="font-medium">Custom</span>
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                            {dayPreset === "custom" ? (
+                              <Input
+                                type="number"
+                                min={1}
+                                value={customDayValue}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  setCustomDayValue(raw);
+                                  if (raw.trim() === "") {
+                                    field.onChange(undefined);
+                                    return;
+                                  }
+                                  const n = parseInt(raw, 10);
+                                  field.onChange(Number.isFinite(n) ? n : undefined);
+                                }}
+                                onBlur={() => {
+                                  const n = parseInt(customDayValue, 10);
+                                  const finalN = Number.isFinite(n) && n > 0 ? n : 1;
+                                  setCustomDayValue(String(finalN));
+                                  field.onChange(finalN);
+                                }}
+                                placeholder="Masukkan jumlah hari"
+                              />
+                            ) : null}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
