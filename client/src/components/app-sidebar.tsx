@@ -41,7 +41,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <HeaderLogo size="lg" />
           <div className="flex flex-col">
-            <span className="font-serif text-lg font-bold tracking-wide">KingVypers</span>
+            <span className="font-serif text-lg font-bold tracking-wide">King Vypers</span>
             <span className="text-xs text-muted-foreground">Key Management</span>
           </div>
         </div>

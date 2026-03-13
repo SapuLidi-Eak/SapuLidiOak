@@ -19,7 +19,7 @@ export function HeaderLogo({ className = "", size = "md" }: Props) {
   return (
     <img
       src={headerLogoSrc}
-      alt="KingVypers"
+      alt="King Vypers"
       className={`rounded-lg object-cover ${sizeClass[size]} ${className}`}
     />
   );

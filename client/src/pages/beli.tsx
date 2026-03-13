@@ -40,7 +40,7 @@ export default function BeliSekarang() {
         <div className="container flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-serif text-xl font-bold tracking-wide">
             <HeaderLogo size="md" />
-            KingVypers
+            King Vypers
           </Link>
           <nav className="flex items-center gap-3">
             <Link href="/beli">

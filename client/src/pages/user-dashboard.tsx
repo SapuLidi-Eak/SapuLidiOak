@@ -411,7 +411,7 @@ export default function UserDashboard() {
         <div className="container flex h-14 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-serif text-lg font-bold">
             <HeaderLogo size="sm" />
-            KingVypers
+            King Vypers
           </Link>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={doLogout}>

@@ -64,7 +64,7 @@ export default function Login() {
           </div>
           <div>
             <CardTitle className="font-serif text-2xl font-bold tracking-wide">
-              KingVypers Admin
+              King Vypers Admin
             </CardTitle>
             <CardDescription className="mt-1">
               Sign in to access your admin dashboard

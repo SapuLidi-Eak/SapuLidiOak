@@ -339,7 +339,7 @@ export default function Landing() {
         <div className="container flex h-16 items-center justify-between gap-2 px-4">
           <Link href="/" className="flex min-w-0 items-center gap-2 font-serif text-xl font-bold tracking-wide">
             <HeaderLogo size="md" />
-            KingVypers
+            King Vypers
           </Link>
           <nav className="hidden sm:flex items-center gap-3 flex-shrink-0">
             <Button variant="outline" size="sm" asChild>
@@ -973,9 +973,7 @@ export default function Landing() {
       {/* Features */}
       <section className="border-t bg-muted/30 py-20">
         <div className="container px-4">
-          <h2 className="font-serif text-3xl font-bold tracking-wide text-center mb-12">
-            Why KingVypers?
-          </h2>
+          <h2 className="font-serif text-3xl font-bold tracking-wide text-center mb-12">Why King Vypers?</h2>
           <div className="grid gap-8 md:grid-cols-3">
             <div className="rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -1053,9 +1051,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container flex flex-col items-center justify-between gap-4 px-4 md:flex-row">
-          <span className="text-sm text-muted-foreground">
-            © KingVypers · 2026
-          </span>
+          <span className="text-sm text-muted-foreground">© King Vypers · 2026</span>
           <div className="flex gap-6">
             <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
               <MessageCircle className="h-4 w-4" />
