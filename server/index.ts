@@ -6,6 +6,10 @@ import helmet from "helmet";
 
 const app = express();
 
+// Railway (dan cloud platform lain) pakai reverse proxy.
+// Trust proxy harus di-set agar express-rate-limit bisa baca IP user dengan benar.
+app.set("trust proxy", 1);
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
