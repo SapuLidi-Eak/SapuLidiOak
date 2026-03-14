@@ -78,7 +78,7 @@ function getYoutubeId(url: string | null): string {
   return m ? m[1] : "";
 }
 
-const DISCORD_INVITE = "https://discord.gg/vGT2km9gh";
+const DISCORD_INVITE = "https://discord.gg/XmWf3YQPpZ";
 
 const TEAM_ACCENT_STYLES: Record<
   string,
